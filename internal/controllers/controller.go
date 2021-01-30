@@ -10,11 +10,13 @@ import (
 
 type BaseHandler struct {
     UserRepo *repositories.UserRepo
+    TsdRepo *repositories.TimeSeriesDatumRepo
 }
 
-func NewBaseHandler(u *repositories.UserRepo) (*BaseHandler) {
+func NewBaseHandler(u *repositories.UserRepo, tsd *repositories.TimeSeriesDatumRepo) (*BaseHandler) {
     return &BaseHandler{
         UserRepo: u,
+        TsdRepo: tsd,
     }
 }
 
@@ -32,6 +34,10 @@ func (h *BaseHandler) HandleRequests(w http.ResponseWriter, r *http.Request) {
     switch {
     case n == 1 && p[0] == "version" && r.Method == http.MethodGet:
         h.getVersion(w, r)
+    case n == 1 && p[0] == "login" && r.Method == http.MethodPost:
+        h.postLogin(w, r)
+    case n == 1 && p[0] == "register" && r.Method == http.MethodPost:
+        h.postRegister(w, r)
     case n == 1 && p[0] == "time-series-data" && r.Method == http.MethodGet:
         h.getTimeSeriesData(w, r)
     case n == 1 && p[0] == "time-series-data" && r.Method == http.MethodPost:

@@ -17,11 +17,15 @@ import (
 )
 
 func main() {
-    db := sqldb.ConnectDB() //TODO: Implement in the future.
+    db, err := sqldb.ConnectDB()
+    if err != nil {
+        log.Fatal(err)
+    }
 
     userRepo := repositories.NewUserRepo(db)
+    tsdRepo := repositories.NewTimeSeriesDatumRepo(db)
 
-    c := controllers.NewBaseHandler(userRepo)
+    c := controllers.NewBaseHandler(userRepo, tsdRepo)
 
     router := http.NewServeMux()
     router.HandleFunc("/", c.HandleRequests)

@@ -1,9 +1,19 @@
 package db
 
 import (
-	"database/sql"
+	"github.com/sdomino/scribble"
 )
 
-func ConnectDB() *sql.DB {
-	return &sql.DB{} //TODO: Implement in future.
+func ConnectDB() (*scribble.Driver, error) {
+	// The location of our db.
+	dir := "./my_database"
+
+	// a new scribble driver, providing the directory where it will be writing to,
+	// and a qualified logger if desired
+	db, err := scribble.New(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }

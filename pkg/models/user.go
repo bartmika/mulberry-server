@@ -1,13 +1,41 @@
 // github.com/bartmika/mulberry-server/internal/models/user.go
 package models
 
-// User ..
+// The definition of the user record we will saving in our database.
 type User struct {
-	Name string
+	Uuid string          `json:"uuid"`
+	Name string          `json:"name"`
+	Email string         `json:"email"`
+	PasswordHash string  `json:"password_hash"`
 }
 
-// UserRepository ..
+// The interface that *must* be implemented.
 type UserRepository interface {
-	FindByID(ID int) (*User, error)
+	Create(uuid string, name string, email string, passwordHash string) error
+	FindByUuid(uuid string) (*User, error)
+	FindByEmail(email string) (*User, error)
 	Save(user *User) error
+}
+
+// The struct used to represent the user's `register` POST request data.
+type RegisterRequest struct {
+	Name string          `json:"name"`
+	Email string         `json:"email"`
+	Password string      `json:"password"`
+}
+
+// The struct used to represent the system's response when the `register` POST request was a success.
+type RegisterResponse struct {
+	Message string          `json:"message"`
+}
+
+// The struct used to represent the user's `login` POST request data.
+type LoginRequest struct {
+	Email string         `json:"email"`
+	Password string      `json:"password"`
+}
+
+// The struct used to represent the system's response when the `login` POST request was a success.
+type LoginResponse struct {
+	AccessToken string          `json:"access_token"`
 }
