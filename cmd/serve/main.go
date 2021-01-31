@@ -17,10 +17,18 @@ import (
 )
 
 func main() {
-    db, err := sqldb.ConnectDB()
+    // Get our environment variables which will used to configure our application.
+    databaseHost := os.Getenv("MULBERRY_DB_HOST")
+    databasePort := os.Getenv("MULBERRY_DB_PORT")
+    databaseUser := os.Getenv("MULBERRY_DB_USER")
+    databasePassword := os.Getenv("MULBERRY_DB_PASSWORD")
+    databaseName := os.Getenv("MULBERRY_DB_NAME")
+
+    db, err := sqldb.ConnectDB(databaseHost, databasePort, databaseUser, databasePassword, databaseName)
     if err != nil {
         log.Fatal(err)
     }
+    defer db.Close()
 
     userRepo := repositories.NewUserRepo(db)
     tsdRepo := repositories.NewTimeSeriesDatumRepo(db)

@@ -2,9 +2,9 @@
 package controllers
 
 import (
+    "encoding/json"
     "fmt"
     "net/http"
-    "encoding/json"
 
     "github.com/google/uuid"
 
@@ -15,6 +15,8 @@ import (
 // To run this API, try running in your console:
 // $ http post 127.0.0.1:5000/api/v1/register email="fherbert@dune.com" password="the-spice-must-flow" name="Frank Herbert"
 func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
     // Initialize our array which will store all the results from the remote server.
     var requestData models.RegisterRequest
 
@@ -32,7 +34,7 @@ func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
     fmt.Println(requestData.Password)
 
     // Lookup the email and if it is not unique we need to generate a `400 Bad Request` response.
-    if userFound, _ := h.UserRepo.FindByEmail(requestData.Email); userFound != nil {
+    if userFound, _ := h.UserRepo.FindByEmail(ctx, requestData.Email); userFound != nil {
         http.Error(w, "Email alread exists", http.StatusBadRequest)
         return
     }
@@ -48,11 +50,15 @@ func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
     }
 
     // Save our new user account.
-    h.UserRepo.Create(uid, requestData.Name, requestData.Email, passwordHash)
+    if err := h.UserRepo.Create(ctx, uid, requestData.Name, requestData.Email, passwordHash); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
     // Generate our response.
     responseData := models.RegisterResponse{
         Message: "You have successfully registered an account.",
+        Uuid: uid,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {  // [2]
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,6 +69,8 @@ func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
 // To run this API, try running in your console:
 // $ http post 127.0.0.1:5000/api/v1/login email="fherbert@dune.com" password="the-spice-must-flow"
 func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
     var requestData models.LoginRequest
 
     err := json.NewDecoder(r.Body).Decode(&requestData)
@@ -76,7 +84,7 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
     fmt.Println(requestData.Password)
 
     // Lookup the user in our database, else return a `400 Bad Request` error.
-    user, err := h.UserRepo.FindByEmail(requestData.Email)
+    user, err := h.UserRepo.FindByEmail(ctx, requestData.Email)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -96,6 +104,7 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
     // Finally return success.
     responseData := models.LoginResponse{
         AccessToken: "TODO: WE WILL FIGURE OUT HOW TO DO THIS IN ANOTHER ARTICLE!",
+        Uuid: user.Uuid,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)

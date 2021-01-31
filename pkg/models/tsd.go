@@ -2,6 +2,7 @@
 package models
 
 import (
+    "context"
     "time"
 )
 
@@ -14,12 +15,12 @@ type TimeSeriesDatum struct {
 }
 
 type TimeSeriesDatumRepository interface {
-    Create(uuid string, instrumentUuid string, value float64, timestamp time.Time, userUuid string) error
-    ListAll() ([]*TimeSeriesDatum, error)
-    FilterByUserUuid(userUuid string) ([]*TimeSeriesDatum, error)
-    FindByUuid(uuid string) (*TimeSeriesDatum, error)
-    DeleteByUuid(uuid string) error
-    Save(datum *TimeSeriesDatum) error
+    Create(ctx context.Context, uuid string, instrumentUuid string, value float64, timestamp time.Time, userUuid string) error
+    ListAll(ctx context.Context) ([]*TimeSeriesDatum, error)
+    FilterByUserUuid(ctx context.Context, userUuid string) ([]*TimeSeriesDatum, error)
+    FindByUuid(ctx context.Context, uuid string) (*TimeSeriesDatum, error)
+    DeleteByUuid(ctx context.Context, uuid string) error
+    Save(ctx context.Context, datum *TimeSeriesDatum) error
 }
 
 type TimeSeriesDatumCreateRequest struct {

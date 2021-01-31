@@ -1,93 +1,172 @@
 package repositories
 
 import (
-    "encoding/json"
+    "context"
+    "database/sql"
+    // "encoding/json"
     "time"
 
-	"github.com/sdomino/scribble"
 	"github.com/bartmika/mulberry-server/pkg/models"
 )
 
 // TimeSeriesDatumRepo implements models.TimeSeriesDatumRepository
 type TimeSeriesDatumRepo struct {
-	db *scribble.Driver
+	db *sql.DB
 }
 
-func NewTimeSeriesDatumRepo(db *scribble.Driver) *TimeSeriesDatumRepo {
+func NewTimeSeriesDatumRepo(db *sql.DB) *TimeSeriesDatumRepo {
 	return &TimeSeriesDatumRepo{
 		db: db,
 	}
 }
 
-func (r *TimeSeriesDatumRepo) Create(uuid string, instrumentUuid string, value float64, timestamp time.Time, userUuid string) error {
-	tsd := models.TimeSeriesDatum{
-		Uuid: uuid,
-		InstrumentUuid: instrumentUuid,
-		Value: value,
-		Timestamp: timestamp,
-        UserUuid: userUuid,
-	}
-	if err := r.db.Write("time_series_data", uuid, &tsd); err != nil {
+func (r *TimeSeriesDatumRepo) Create(ctx context.Context, uuid string, instrumentUuid string, value float64, timestamp time.Time, userUuid string) error {
+    ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := "INSERT INTO time_series_data (uuid, instrument_uuid, value, timestamp, user_uuid) VALUES ($1, $2, $3, $4, $5)"
+
+	stmt, err := r.db.PrepareContext(ctx, query)
+	if err != nil {
 		return err
 	}
-	return nil
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(
+		ctx,
+		uuid,
+		instrumentUuid,
+		value,
+		timestamp,
+        userUuid,
+	)
+	return err
 }
 
-func (r *TimeSeriesDatumRepo) ListAll() ([]*models.TimeSeriesDatum, error) {
-    var results []*models.TimeSeriesDatum
-    records, err := r.db.ReadAll("time_series_data")
+func (r *TimeSeriesDatumRepo) ListAll(ctx context.Context) ([]*models.TimeSeriesDatum, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+    query := "SELECT uuid, instrument_uuid, value, timestamp, user_uuid FROM time_series_data"
+
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-        return nil, err
-	}
-
-    for _, f := range records {
-		tsdFound := models.TimeSeriesDatum{}
-        if err := json.Unmarshal([]byte(f), &tsdFound); err != nil {
-            return nil, err
-		}
-		results = append(results, &tsdFound)
-	}
-	return results, nil
-}
-
-func (r *TimeSeriesDatumRepo) FilterByUserUuid(userUuid string) ([]*models.TimeSeriesDatum, error) {
-    var results []*models.TimeSeriesDatum
-    records, err := r.db.ReadAll("time_series_data")
-	if err != nil {
-        return nil, err
-	}
-
-    for _, f := range records {
-		tsdFound := models.TimeSeriesDatum{}
-        if err := json.Unmarshal([]byte(f), &tsdFound); err != nil {
-            return nil, err
-		}
-		if tsdFound.UserUuid == userUuid {
-			results = append(results, &tsdFound)
-		}
-	}
-	return results, nil
-}
-
-func (r *TimeSeriesDatumRepo) FindByUuid(uuid string) (*models.TimeSeriesDatum, error) {
-    tsd := models.TimeSeriesDatum{}
-	if err := r.db.Read("time_series_data", uuid, &tsd); err != nil {
 		return nil, err
 	}
-	return &tsd, nil
+    defer rows.Close()
+
+	var s []*models.TimeSeriesDatum
+	for rows.Next() {
+		m := new(models.TimeSeriesDatum)
+		err = rows.Scan(
+			&m.Uuid,
+            &m.InstrumentUuid,
+            &m.Value,
+            &m.Timestamp,
+            &m.UserUuid,
+		)
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, m)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return s, err
 }
 
+func (r *TimeSeriesDatumRepo) FilterByUserUuid(ctx context.Context, userUuid string) ([]*models.TimeSeriesDatum, error) {
+    ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-func (r *TimeSeriesDatumRepo) DeleteByUuid(uuid string) error {
-    if err := r.db.Delete("time_series_data", uuid); err != nil {
-		return err
+    query := "SELECT uuid, instrument_uuid, value, timestamp, user_uuid FROM time_series_data WHERE user_uuid = $1"
+
+	rows, err := r.db.QueryContext(ctx, query, userUuid)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+    defer rows.Close()
+
+	var s []*models.TimeSeriesDatum
+	for rows.Next() {
+		m := new(models.TimeSeriesDatum)
+		err = rows.Scan(
+			&m.Uuid,
+            &m.InstrumentUuid,
+            &m.Value,
+            &m.Timestamp,
+            &m.UserUuid,
+		)
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, m)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return s, err
 }
 
-func (r *TimeSeriesDatumRepo) Save(tsd *models.TimeSeriesDatum) error {
-	if err := r.db.Write("time_series_data", tsd.Uuid, tsd); err != nil {
+func (r *TimeSeriesDatumRepo) FindByUuid(ctx context.Context, uuid string) (*models.TimeSeriesDatum, error) {
+    ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	m := new(models.TimeSeriesDatum)
+
+	query := "SELECT uuid, instrument_uuid, value, timestamp, user_uuid FROM time_series_data WHERE uuid = $1"
+	err := r.db.QueryRowContext(ctx, query, uuid).Scan(
+        &m.Uuid,
+        &m.InstrumentUuid,
+        &m.Value,
+        &m.Timestamp,
+        &m.UserUuid,
+	)
+	if err != nil {
+		// CASE 1 OF 2: Cannot find record with that uuid.
+		if err == sql.ErrNoRows {
+			return nil, nil
+		} else { // CASE 2 OF 2: All other errors.
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+func (r *TimeSeriesDatumRepo) DeleteByUuid(ctx context.Context, uuid string) error {
+    ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+    query := "DELETE FROM time_series_data WHERE uuid = $1;"
+
+    _, err := r.db.Exec(query, uuid)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (r *TimeSeriesDatumRepo) Save(ctx context.Context, m *models.TimeSeriesDatum) error {
+    ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := "UPDATE time_series_data SET instrument_uuid = $1, value = $2, timestamp = $3, user_uuid = $4 WHERE uuid = $5"
+	stmt, err := r.db.PrepareContext(ctx, query)
+	if err != nil {
 		return err
 	}
-	return nil
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(
+		ctx,
+		m.InstrumentUuid,
+		m.Value,
+		m.Timestamp,
+        m.UserUuid,
+		m.Uuid,
+	)
+	return err
 }

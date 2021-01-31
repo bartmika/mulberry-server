@@ -1,19 +1,28 @@
 package db
 
 import (
-	"github.com/sdomino/scribble"
+	"fmt"
+	"database/sql"
+
+	_ "github.com/lib/pq"
 )
 
-func ConnectDB() (*scribble.Driver, error) {
-	// The location of our db.
-	dir := "./my_database"
+func ConnectDB(databaseHost, databasePort, databaseUser, databasePassword, databaseName string) (*sql.DB, error) {
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable",
+		databaseHost,
+		databasePort,
+		databaseUser,
+		databasePassword,
+		databaseName,
+	)
 
-	// a new scribble driver, providing the directory where it will be writing to,
-	// and a qualified logger if desired
-	db, err := scribble.New(dir, nil)
+	dbInstance, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		return nil, err
 	}
-
-	return db, nil
+	err = dbInstance.Ping()
+	if err != nil {
+		return nil, err
+	}
+	return dbInstance, nil
 }

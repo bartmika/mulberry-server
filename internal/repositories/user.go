@@ -1,65 +1,112 @@
 package repositories
 
 import (
-	"encoding/json"
+	"context"
+	"database/sql"
+	// "encoding/json"
+	"time"
 
-	"github.com/sdomino/scribble"
 	"github.com/bartmika/mulberry-server/pkg/models"
 )
 
 // UserRepo implements models.UserRepository
 type UserRepo struct {
-	db *scribble.Driver
+	db *sql.DB
 }
 
-func NewUserRepo(db *scribble.Driver) *UserRepo {
+func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{
 		db: db,
 	}
 }
 
-func (r *UserRepo) Create(uuid string, name string, email string, passwordHash string) error {
-	u := models.User{
-		Uuid: uuid,
-		Name: name,
-		Email: email,
-		PasswordHash: passwordHash,
-	}
-	if err := r.db.Write("users", uuid, u); err != nil {
-		return err
-	}
-	return nil
-}
+func (r *UserRepo) Create(ctx context.Context, uuid string, name string, email string, passwordHash string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-func (r *UserRepo) FindByUuid(uuid string) (*models.User, error) {
-    u := models.User{}
-	if err := r.db.Read("users", uuid, &u); err != nil {
-		return nil, err
-	}
-	return &u, nil
-}
+	query := "INSERT INTO users (uuid, name, email, password_hash) VALUES ($1, $2, $3, $4)"
 
-func (r *UserRepo) FindByEmail(email string) (*models.User, error) {
-	records, err := r.db.ReadAll("users")
+	stmt, err := r.db.PrepareContext(ctx, query)
 	if err != nil {
-        return nil, err
-	}
-
-    for _, f := range records {
-		userFound := models.User{}
-        if err := json.Unmarshal([]byte(f), &userFound); err != nil {
-            return nil, err
-		}
-		if userFound.Email == email {
-			return &userFound, nil
-		}
-	}
-	return nil, nil
-}
-
-func (r *UserRepo) Save(user *models.User) error {
-	if err := r.db.Write("users", user.Uuid, user); err != nil {
 		return err
 	}
-	return nil
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(
+		ctx,
+		uuid,
+		name,
+		email,
+		passwordHash,
+	)
+	return err
+}
+
+func (r *UserRepo) FindByUuid(ctx context.Context, uuid string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	m := new(models.User)
+
+	query := "SELECT uuid, name, email, password_hash FROM users WHERE uuid = $1"
+	err := r.db.QueryRowContext(ctx, query, uuid).Scan(
+		&m.Uuid,
+		&m.Name,
+		&m.Email,
+		&m.PasswordHash,
+	)
+	if err != nil {
+		// CASE 1 OF 2: Cannot find record with that uuid.
+		if err == sql.ErrNoRows {
+			return nil, nil
+		} else { // CASE 2 OF 2: All other errors.
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	m := new(models.User)
+
+	query := "SELECT uuid, name, email, password_hash FROM users WHERE email = $1"
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
+		&m.Uuid,
+		&m.Name,
+		&m.Email,
+		&m.PasswordHash,
+	)
+	if err != nil {
+		// CASE 1 OF 2: Cannot find record with that email.
+		if err == sql.ErrNoRows {
+			return nil, nil
+		} else { // CASE 2 OF 2: All other errors.
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+func (r *UserRepo) Save(ctx context.Context, m *models.User) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := "UPDATE users SET name = $1, email = $2, password_hash = $3 WHERE uuid = $4"
+	stmt, err := r.db.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(
+		ctx,
+		m.Name,
+		m.Email,
+		m.PasswordHash,
+		m.Uuid,
+	)
+	return err
 }
