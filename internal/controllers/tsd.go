@@ -2,7 +2,7 @@
 package controllers
 
 import (
-    "fmt"
+    // "fmt"
     "net/http"
     "encoding/json"
 
@@ -15,10 +15,9 @@ import (
 // $ http get 127.0.0.1:5000/api/v1/time-series-data
 func (h *BaseHandler) getTimeSeriesData(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
+    userUuid := ctx.Value("client_uuid").(string)
 
-    //TODO: Add filtering based on the authenticated user account. For now just list all the records.
-    //      In a future article we will update this code.
-    results, err := h.TsdRepo.ListAll(ctx)
+    results, err := h.TsdRepo.FilterByUserUuid(ctx, userUuid)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -35,23 +34,25 @@ func (h *BaseHandler) getTimeSeriesData(w http.ResponseWriter, r *http.Request) 
 // $ http post 127.0.0.1:5000/api/v1/time-series-data instrument_uuid="lalala" value="123" timestamp="2021-01-30T10:20:10.000Z" user_uuid="lalala"
 func (h *BaseHandler) postTimeSeriesData(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
+    userUuid := ctx.Value("client_uuid").(string)
+
     var requestData models.TimeSeriesDatumCreateRequest
     if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
-    // For debugging purposes only.
-    fmt.Println(requestData.InstrumentUuid)
-    fmt.Println(requestData.Value)
-    fmt.Println(requestData.Timestamp)
-    fmt.Println(requestData.UserUuid)
+    // // For debugging purposes only.
+    // fmt.Println(requestData.InstrumentUuid)
+    // fmt.Println(requestData.Value)
+    // fmt.Println(requestData.Timestamp)
+    // fmt.Println(requestData.UserUuid)
 
     // Generate a `UUID` for our record.
     uid := uuid.New().String()
 
     // Save to our database.
-    err := h.TsdRepo.Create(ctx, uid, requestData.InstrumentUuid, requestData.Value, requestData.Timestamp, requestData.UserUuid)
+    err := h.TsdRepo.Create(ctx, uid, requestData.InstrumentUuid, requestData.Value, requestData.Timestamp, userUuid)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -65,7 +66,7 @@ func (h *BaseHandler) postTimeSeriesData(w http.ResponseWriter, r *http.Request)
         InstrumentUuid: requestData.InstrumentUuid,
         Value: requestData.Value,
         Timestamp: requestData.Timestamp,
-        UserUuid: requestData.UserUuid,
+        UserUuid: userUuid,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,11 +78,18 @@ func (h *BaseHandler) postTimeSeriesData(w http.ResponseWriter, r *http.Request)
 // $ http get 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569
 func (h *BaseHandler) getTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uuid string) {
     ctx := r.Context()
+    userUuid := ctx.Value("client_uuid").(string)
 
     // Lookup our record.
     tsd, err := h.TsdRepo.FindByUuid(ctx, uuid)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Enforce account access.
+    if tsd.UserUuid != userUuid {
+        http.Error(w, "Forbidden", http.StatusForbidden)
         return
     }
 
@@ -96,6 +104,18 @@ func (h *BaseHandler) getTimeSeriesDatum(w http.ResponseWriter, r *http.Request,
 // $ http put 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569 instrument_uuid="lalala" value="321" timestamp="2021-01-30T10:20:10.000Z" user_uuid="lalala"
 func (h *BaseHandler) putTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uid string) {
     ctx := r.Context()
+    userUuid := ctx.Value("client_uuid").(string)
+
+    // Lookup our record and enforce account access.
+    tsd, err := h.TsdRepo.FindByUuid(ctx, uid)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    if tsd.UserUuid != userUuid {
+        http.Error(w, "Forbidden", http.StatusForbidden)
+        return
+    }
 
     var requestData models.TimeSeriesDatumPutRequest
     if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
@@ -103,22 +123,22 @@ func (h *BaseHandler) putTimeSeriesDatum(w http.ResponseWriter, r *http.Request,
         return
     }
 
-    // For debugging purposes only.
-    fmt.Println(uid)
-    fmt.Println(requestData.InstrumentUuid)
-    fmt.Println(requestData.Value)
-    fmt.Println(requestData.Timestamp)
-    fmt.Println(requestData.UserUuid)
+    // // For debugging purposes only.
+    // fmt.Println(uid)
+    // fmt.Println(requestData.InstrumentUuid)
+    // fmt.Println(requestData.Value)
+    // fmt.Println(requestData.Timestamp)
+    // fmt.Println(requestData.UserUuid)
 
     // Update our record.
-    tsd := models.TimeSeriesDatum{
+    tsd = &models.TimeSeriesDatum{
         Uuid: uid,
         InstrumentUuid: requestData.InstrumentUuid,
         Value: requestData.Value,
         Timestamp: requestData.Timestamp,
-        UserUuid: requestData.UserUuid,
+        UserUuid: userUuid,
     }
-    err := h.TsdRepo.Save(ctx, &tsd)
+    err = h.TsdRepo.Save(ctx, tsd)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -135,6 +155,18 @@ func (h *BaseHandler) putTimeSeriesDatum(w http.ResponseWriter, r *http.Request,
 // $ http delete 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569
 func (h *BaseHandler) deleteTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uid string) {
     ctx := r.Context()
+    userUuid := ctx.Value("client_uuid").(string)
+
+    // Lookup our record and enforce account access.
+    tsd, err := h.TsdRepo.FindByUuid(ctx, uid)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    if tsd.UserUuid != userUuid {
+        http.Error(w, "Forbidden", http.StatusForbidden)
+        return
+    }
 
     if err := h.TsdRepo.DeleteByUuid(ctx, uid); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -36,7 +36,7 @@ func main() {
     c := controllers.NewBaseHandler(userRepo, tsdRepo)
 
     router := http.NewServeMux()
-    router.HandleFunc("/", c.HandleRequests)
+    router.HandleFunc("/", controllers.Middleware(c.HandleRequests))
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf("%s:%s", "localhost", "5000"),

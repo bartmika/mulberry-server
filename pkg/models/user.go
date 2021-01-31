@@ -43,5 +43,4 @@ type LoginRequest struct {
 // The struct used to represent the system's response when the `login` POST request was a success.
 type LoginResponse struct {
 	AccessToken string `json:"access_token"`
-	Uuid string        `json:"uuid"`
 }

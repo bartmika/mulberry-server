@@ -3,7 +3,7 @@ package controllers
 
 import (
     "encoding/json"
-    "fmt"
+    // "fmt"
     "net/http"
 
     "github.com/google/uuid"
@@ -28,10 +28,10 @@ func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // For debugging purposes, print our output so you can see the code working.
-    fmt.Println(requestData.Name)
-    fmt.Println(requestData.Email)
-    fmt.Println(requestData.Password)
+    // // For debugging purposes, print our output so you can see the code working.
+    // fmt.Println(requestData.Name)
+    // fmt.Println(requestData.Email)
+    // fmt.Println(requestData.Password)
 
     // Lookup the email and if it is not unique we need to generate a `400 Bad Request` response.
     if userFound, _ := h.UserRepo.FindByEmail(ctx, requestData.Email); userFound != nil {
@@ -79,9 +79,9 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // For debugging purposes, print our output so you can see the code working.
-    fmt.Println(requestData.Email)
-    fmt.Println(requestData.Password)
+    // // For debugging purposes, print our output so you can see the code working.
+    // fmt.Println(requestData.Email)
+    // fmt.Println(requestData.Password)
 
     // Lookup the user in our database, else return a `400 Bad Request` error.
     user, err := h.UserRepo.FindByEmail(ctx, requestData.Email)
@@ -101,10 +101,20 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Generate a `UUID` for our session.
+    uid := uuid.New().String()
+
+    // Generate our JWT token.
+    mySigningKey := ctx.Value("jwt_signing_key").([]byte)
+    accessToken, err := utils.GenerateJWT(mySigningKey, uid, user.Uuid)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
     // Finally return success.
     responseData := models.LoginResponse{
-        AccessToken: "TODO: WE WILL FIGURE OUT HOW TO DO THIS IN ANOTHER ARTICLE!",
-        Uuid: user.Uuid,
+        AccessToken: accessToken,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
