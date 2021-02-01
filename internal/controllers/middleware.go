@@ -50,10 +50,10 @@ func JWTProcessorMiddleware(fn http.HandlerFunc) http.HandlerFunc {
 
             // log.Println(reqToken) // For debugging purposes only.
 
-            m, err := utils.ProcessJWT(mySigningKey, reqToken)
+            user_uuid, err := utils.ProcessJWTToken(mySigningKey, reqToken)
             if err == nil {
                 ctx = context.WithValue(ctx, "is_authorized", true)
-                ctx = context.WithValue(ctx, "user_uuid", m["user_uuid"])
+                ctx = context.WithValue(ctx, "user_uuid", user_uuid)
 
                 // Flow to the next middleware with our JWT token saved.
                 fn(w, r.WithContext(ctx))

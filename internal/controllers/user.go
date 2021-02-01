@@ -3,7 +3,7 @@ package controllers
 
 import (
     "encoding/json"
-    // "fmt"
+    "log"
     "net/http"
 
     "github.com/google/uuid"
@@ -102,7 +102,7 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
 
     // Generate our JWT token.
     mySigningKey := ctx.Value("jwt_signing_key").([]byte)
-    accessToken, err := utils.GenerateJWT(mySigningKey, user.Uuid)
+    accessToken, refreshToken, err := utils.GenerateJWTTokenPair(mySigningKey, user.Uuid)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -111,6 +111,49 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
     // Finally return success.
     responseData := models.LoginResponse{
         AccessToken: accessToken,
+        RefreshToken: refreshToken,
+    }
+    if err := json.NewEncoder(w).Encode(&responseData); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+}
+
+// To run this API, try running in your console:
+// $ http post 127.0.0.1:5000/api/v1/refresh-token value="xxx"
+func (h *BaseHandler) postRefreshToken(w http.ResponseWriter, r *http.Request) {
+    var requestData models.RefreshTokenRequest
+
+    err := json.NewDecoder(r.Body).Decode(&requestData)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    // // For debugging purposes, print our output so you can see the code working.
+    log.Println(requestData.Value)
+
+    ctx := r.Context()
+    mySigningKey := ctx.Value("jwt_signing_key").([]byte)
+
+    // Verify our refresh token.
+    user_uuid, err := utils.ProcessJWTToken(mySigningKey, requestData.Value)
+    if err != nil {
+        http.Error(w, "Unauthorized - refresh token expired or invalid", http.StatusUnauthorized)
+        return
+    }
+
+    // Generate our JWT token.
+    accessToken, refreshToken, err := utils.GenerateJWTTokenPair(mySigningKey, user_uuid)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Finally return success.
+    responseData := models.RefreshTokenResponse{
+        AccessToken: accessToken,
+        RefreshToken: refreshToken,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)

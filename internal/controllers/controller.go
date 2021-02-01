@@ -37,35 +37,37 @@ func (h *BaseHandler) HandleRequests(w http.ResponseWriter, r *http.Request) {
         h.postLogin(w, r)
     case n == 1 && p[0] == "register" && r.Method == http.MethodPost:
         h.postRegister(w, r)
+    case n == 1 && p[0] == "refresh-token" && r.Method == http.MethodPost:
+        h.postRefreshToken(w, r)
     case n == 1 && p[0] == "time-series-data" && r.Method == http.MethodGet:
         if isAuthorized {
             h.getTimeSeriesData(w, r)
         } else {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            http.Error(w, "Unauthorized - access token expired or invalid", http.StatusUnauthorized)
         }
     case n == 1 && p[0] == "time-series-data" && r.Method == http.MethodPost:
         if isAuthorized {
             h.postTimeSeriesData(w, r)
         } else {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            http.Error(w, "Unauthorized - access token expired or invalid", http.StatusUnauthorized)
         }
     case n == 2 && p[0] == "time-series-datum" && r.Method == http.MethodGet:
         if isAuthorized {
             h.getTimeSeriesDatum(w, r, p[1])
         } else {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            http.Error(w, "Unauthorized - access token expired or invalid", http.StatusUnauthorized)
         }
     case n == 2 && p[0] == "time-series-datum" && r.Method == http.MethodPut:
         if isAuthorized {
             h.putTimeSeriesDatum(w, r, p[1])
         } else {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            http.Error(w, "Unauthorized - access token expired or invalid", http.StatusUnauthorized)
         }
     case n == 2 && p[0] == "time-series-datum" && r.Method == http.MethodDelete:
         if isAuthorized {
             h.deleteTimeSeriesDatum(w, r, p[1])
         } else {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            http.Error(w, "Unauthorized - access token expired or invalid", http.StatusUnauthorized)
         }
     default:
         http.NotFound(w, r)

@@ -42,4 +42,16 @@ type LoginRequest struct {
 // The struct used to represent the system's response when the `login` POST request was a success.
 type LoginResponse struct {
 	AccessToken string `json:"access_token"`
+    RefreshToken string `json:"refresh_token"`
+}
+
+// The struct used to represent the user's `refresh token` POST request data.
+type RefreshTokenRequest struct {
+	Value string     `json:"value"`
+}
+
+// The struct used to represent the system's response when the `refresh token` POST request was a success.
+type RefreshTokenResponse struct {
+	AccessToken string `json:"access_token"`
+    RefreshToken string `json:"refresh_token"`
 }
