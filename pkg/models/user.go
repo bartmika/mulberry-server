@@ -31,7 +31,6 @@ type RegisterRequest struct {
 // The struct used to represent the system's response when the `register` POST request was a success.
 type RegisterResponse struct {
 	Message string `json:"message"`
-	Uuid string    `json:"uuid"`
 }
 
 // The struct used to represent the user's `login` POST request data.

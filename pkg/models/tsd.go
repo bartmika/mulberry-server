@@ -27,7 +27,6 @@ type TimeSeriesDatumCreateRequest struct {
     InstrumentUuid string `json:"instrument_uuid"`
     Value float64 `json:"value,string"`
     Timestamp time.Time `json:"timestamp"`
-    UserUuid string `json:"user_uuid"`
 }
 
 type TimeSeriesDatumCreateResponse struct {
@@ -42,5 +41,4 @@ type TimeSeriesDatumPutRequest struct {
     InstrumentUuid string `json:"instrument_uuid"`
     Value float64 `json:"value,string"`
     Timestamp time.Time `json:"timestamp"`
-    UserUuid string `json:"user_uuid"`
 }

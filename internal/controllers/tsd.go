@@ -15,7 +15,7 @@ import (
 // $ http get 127.0.0.1:5000/api/v1/time-series-data
 func (h *BaseHandler) getTimeSeriesData(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    userUuid := ctx.Value("client_uuid").(string)
+    userUuid := ctx.Value("user_uuid").(string)
 
     results, err := h.TsdRepo.FilterByUserUuid(ctx, userUuid)
     if err != nil {
@@ -34,7 +34,7 @@ func (h *BaseHandler) getTimeSeriesData(w http.ResponseWriter, r *http.Request) 
 // $ http post 127.0.0.1:5000/api/v1/time-series-data instrument_uuid="lalala" value="123" timestamp="2021-01-30T10:20:10.000Z" user_uuid="lalala"
 func (h *BaseHandler) postTimeSeriesData(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    userUuid := ctx.Value("client_uuid").(string)
+    userUuid := ctx.Value("user_uuid").(string)
 
     var requestData models.TimeSeriesDatumCreateRequest
     if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
@@ -78,7 +78,7 @@ func (h *BaseHandler) postTimeSeriesData(w http.ResponseWriter, r *http.Request)
 // $ http get 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569
 func (h *BaseHandler) getTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uuid string) {
     ctx := r.Context()
-    userUuid := ctx.Value("client_uuid").(string)
+    userUuid := ctx.Value("user_uuid").(string)
 
     // Lookup our record.
     tsd, err := h.TsdRepo.FindByUuid(ctx, uuid)
@@ -104,7 +104,7 @@ func (h *BaseHandler) getTimeSeriesDatum(w http.ResponseWriter, r *http.Request,
 // $ http put 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569 instrument_uuid="lalala" value="321" timestamp="2021-01-30T10:20:10.000Z" user_uuid="lalala"
 func (h *BaseHandler) putTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uid string) {
     ctx := r.Context()
-    userUuid := ctx.Value("client_uuid").(string)
+    userUuid := ctx.Value("user_uuid").(string)
 
     // Lookup our record and enforce account access.
     tsd, err := h.TsdRepo.FindByUuid(ctx, uid)
@@ -155,7 +155,7 @@ func (h *BaseHandler) putTimeSeriesDatum(w http.ResponseWriter, r *http.Request,
 // $ http delete 127.0.0.1:5000/api/v1/time-series-datum/f3e7b442-f3d4-4c2f-8f8d-d347982c1569
 func (h *BaseHandler) deleteTimeSeriesDatum(w http.ResponseWriter, r *http.Request, uid string) {
     ctx := r.Context()
-    userUuid := ctx.Value("client_uuid").(string)
+    userUuid := ctx.Value("user_uuid").(string)
 
     // Lookup our record and enforce account access.
     tsd, err := h.TsdRepo.FindByUuid(ctx, uid)

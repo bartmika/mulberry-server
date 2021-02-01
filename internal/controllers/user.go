@@ -58,7 +58,6 @@ func (h *BaseHandler) postRegister(w http.ResponseWriter, r *http.Request) {
     // Generate our response.
     responseData := models.RegisterResponse{
         Message: "You have successfully registered an account.",
-        Uuid: uid,
     }
     if err := json.NewEncoder(w).Encode(&responseData); err != nil {  // [2]
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -101,12 +100,9 @@ func (h *BaseHandler) postLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Generate a `UUID` for our session.
-    uid := uuid.New().String()
-
     // Generate our JWT token.
     mySigningKey := ctx.Value("jwt_signing_key").([]byte)
-    accessToken, err := utils.GenerateJWT(mySigningKey, uid, user.Uuid)
+    accessToken, err := utils.GenerateJWT(mySigningKey, user.Uuid)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
